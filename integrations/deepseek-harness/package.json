@@ -1,0 +1,51 @@
+{
+  "name": "dsh-plugin-remote-browser",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness (dsh) bundle that mounts the remote-browser MCP server as native tools, with a settings tab for credentials",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": {
+      "default": "./client.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "selftest.mjs",
+    "smoke.mjs",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-connection"
+      ],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "selftest": "node selftest.mjs",
+    "smoke": "node smoke.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-mcp-client": "^0.0.1-rc.1"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "yaml": "^2.9.1"
+  }
+}
