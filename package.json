@@ -1,0 +1,37 @@
+{
+  "name": "remote-browser",
+  "version": "1.0.0",
+  "description": "On-demand browser sandbox MCP server backed by Tencent Cloud Agent Runtime (AGS)",
+  "main": "dist/index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "node --experimental-strip-types src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "deploy": "node scripts/deploy.cjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "playwright-core": "^1.65.1",
+    "tencentcloud-sdk-nodejs-ags": "^4.1.350",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "bin": {
+    "remote-browser": "dist/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
