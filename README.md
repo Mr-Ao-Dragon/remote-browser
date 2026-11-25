@@ -213,6 +213,28 @@ node integrations/deepseek-harness/selftest.mjs   # 22 项，离线自检（含 
 node integrations/deepseek-harness/smoke.mjs      # 真实拉起 MCP 子进程，确认 7 个工具被 dsh 发现
 ```
 
+## 给 Agent 用的 Skill
+
+[skills/remote-browser](skills/remote-browser/SKILL.md) 是一份 Agent Skill，教调用方怎么用这 7 个工具：什么时候该等、`selector` 怎么写、`type` 不按回车、拿到 `null` 代表什么、每种错误码该重试还是该停手。它不含任何凭证或服务端实现，只描述工具面。
+
+装上之后 Agent 在遇到「打开网页 / 抓列表 / 填表提交 / 截图核对」这类请求时会自动加载。安装方式是把整个目录放进宿主机的技能目录：
+
+```bash
+# tianxi / Lenovo AIAgent
+cp -r skills/remote-browser "$PROGRAMDATA/Lenovo/AIAgent/xlagent/skills/"
+
+# Claude Code / 兼容 Agent Skills 的宿主
+cp -r skills/remote-browser ~/.claude/skills/
+```
+
+本机也可以直接建目录联接，避免两处副本漂移：
+
+```bash
+cmd //c mklink /J "%PROGRAMDATA%\Lenovo\AIAgent\xlagent\skills\remote-browser" "%CD%\skills\remote-browser"
+```
+
+工具名带宿主前缀（如 `mcp__remote_browser__browser_navigate`）时按后缀识别。
+
 ## 已知限制
 
 - `Timeout` 实测最小 300s，空闲回收的最小粒度受限于本地 `RB_IDLE_MS`，与 TTL 无关。
@@ -257,6 +279,8 @@ scripts/
 docker/Dockerfile     可选的自定义镜像
 integrations/
   deepseek-harness/   dsh 适配层：bundle + 设置标签页 + 自检（核心零改动）
+skills/
+  remote-browser/     Agent Skill：7 个工具的使用说明、错误应对与任务配方
 docs/
   implementation-plan.md  实施方案与实测结论
   cost.md                 成本构成与估算方法
