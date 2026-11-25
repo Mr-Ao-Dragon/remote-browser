@@ -365,10 +365,13 @@ await acheck("浏览器半边能加载并把分区注册到 settings.section", a
       },
     },
   };
+  const describeCalls = [];
   const stubReact = {
     createElement: () => null,
-    useState: () => [undefined, () => {}],
-    useEffect: () => {},
+    useState: (initial) => [initial, () => {}],
+    // 立刻执行 effect：旧实现里 connection.api 不存在，refresh() 会同步抛 TypeError，
+    // 这里能把这种"分区注册成功但一渲染就崩"的回归当场抓出来。
+    useEffect: (fn) => fn(),
     useCallback: (fn) => fn,
   };
   const stubRequire = (id) => {
@@ -381,18 +384,33 @@ await acheck("浏览器半边能加载并把分区注册到 settings.section", a
   assert.ok(loaded, "没有调用 window.__ModuleLoader__.load");
   assert.equal(loaded.id, "dsh-plugin-remote-browser");
   const clientModule = loaded.factory(stubRequire);
-  assert.deepEqual(clientModule.inject, ["slots", "connection"]);
+  assert.deepEqual(clientModule.inject, ["slots", "connection", "remote", "remote.credentials"]);
+  assert.ok(!source.includes("connection.api"), "connection 句柄没有 api 字段，不应再访问");
 
   const registered = [];
   const ctx = {
-    get: (name) => (name === "connection" ? { api: {}, isLoopback: true } : undefined),
+    // 真实 connection 句柄的形状：只有 isLoopback / rpc 等字段，没有 api。
+    get: (name) => (name === "connection" ? { isLoopback: true } : undefined),
+    remote: {
+      credentials: {
+        describe: (refs) => {
+          describeCalls.push(refs);
+          return Promise.resolve({
+            ok: true,
+            value: Object.fromEntries(refs.map((ref) => [ref, { configured: false, writable: true }])),
+          });
+        },
+        set: () => Promise.resolve({ ok: true, value: undefined }),
+        unset: () => Promise.resolve({ ok: true, value: undefined }),
+      },
+    },
     slots: {
       inject: (key, callback) => {
         registered.push({ inject: key });
         callback();
       },
-      register: (options) => {
-        registered.push({ options });
+      register: (options, component) => {
+        registered.push({ options, component });
         return () => {};
       },
     },
@@ -404,6 +422,10 @@ await acheck("浏览器半边能加载并把分区注册到 settings.section", a
   assert.equal(section.options.name, "settings.section");
   assert.equal(section.options.id, "remote-browser");
   assert.equal(section.options.label, "远端浏览器");
+  // 渲染一次分区：effect 触发 describe，且用的是 remote.credentials 命名空间。
+  section.component();
+  assert.equal(describeCalls.length, 1, "分区挂载后应读取一次凭证状态");
+  assert.deepEqual(describeCalls[0], CREDENTIAL_REFS);
 });
 
 await acheck("package.json 把 host / client 两半都挂好了", async () => {

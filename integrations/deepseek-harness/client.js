@@ -85,22 +85,25 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 
-		const inject = ["slots", "connection"];
+		// remote.credentials 是 dsh 客户端暴露的凭证命名空间（Host 端凭据控制器），
+		// 由 @deepseek-ai/dsh-api-remotes 挂载。访问 ctx.remote.<ns> 需要同时注入
+		// "remote" 与 "remote.<ns>"（cordis 的属性访问会校验注入表）。
+		const inject = ["slots", "connection", "remote", "remote.credentials"];
 
 		function messageOf(error) {
 			if (error instanceof Error) return error.message;
 			return String(error);
 		}
 
-		/** rpc 结果里的失败信息：code + message，都不含凭证明文。 */
+		/** Remote 调用的失败信息：code + message，都不含凭证明文。 */
 		function describeError(response) {
-			const failure = response && response.result && response.result.error;
+			const failure = response && response.error;
 			if (!failure) return "未知错误";
 			return failure.code ? failure.code + "：" + failure.message : String(failure.message);
 		}
 
 		function isFailure(response) {
-			return !response || !response.result || response.result.ok !== true;
+			return !response || response.ok !== true;
 		}
 
 		function statusBadge(info, loading) {
@@ -114,9 +117,10 @@ window.__ModuleLoader__.load({
 		}
 
 		function apply(ctx) {
+			// 连接句柄只有 rpc/isLoopback 等字段，凭证读写走 ctx.remote.credentials。
 			const connection = ctx.get("connection");
-			const api = connection.api;
-			const loopback = connection.isLoopback !== false;
+			const loopback = !connection || connection.isLoopback !== false;
+			const credentials = ctx.remote.credentials;
 
 			function RemoteBrowserSection() {
 				const [status, setStatus] = react.useState(null);
@@ -126,11 +130,12 @@ window.__ModuleLoader__.load({
 
 				const refresh = react.useCallback(
 					function () {
-						return api.credentials
-							.describe({ refs: ALL_REFS })
+						return credentials
+							.describe(ALL_REFS)
 							.then(function (response) {
 								if (isFailure(response)) throw new Error(describeError(response));
-								setStatus(response.result.value.credentials || {});
+								// 返回形状：{ ok: true, value: { [ref]: { configured, source?, writable } } }
+								setStatus(response.value || {});
 							})
 							.catch(function (error) {
 								setStatus(function (previous) {
@@ -165,7 +170,7 @@ window.__ModuleLoader__.load({
 					let chain = Promise.resolve();
 					refs.forEach(function (ref) {
 						chain = chain.then(function () {
-							return api.credentials.set({ ref: ref, value: drafts[ref] }).then(
+							return credentials.set(ref, drafts[ref]).then(
 								function (response) {
 									if (isFailure(response)) failures.push(ref + "（" + describeError(response) + "）");
 									else succeeded.push(ref);
@@ -204,7 +209,7 @@ window.__ModuleLoader__.load({
 				function clearRef(ref) {
 					setBusy(true);
 					setNotice(null);
-					api.credentials.unset({ ref: ref }).then(
+					credentials.unset(ref).then(
 						function (response) {
 							setNotice(
 								isFailure(response)
