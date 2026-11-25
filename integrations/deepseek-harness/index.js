@@ -200,7 +200,8 @@ export async function apply(ctx, config = {}) {
   let appliedEnv = JSON.stringify(collectEnv(config, initialEnv));
   let timer;
   ctx.effect(() => {
-    const off = ctx.on("credentials/updated", (ref) => {
+    // dsh 0.2.x 的事件名是 credentials/reference-updated（rc.1 时代叫 credentials/updated）。
+    const off = ctx.on("credentials/reference-updated", (ref) => {
       if (!CREDENTIAL_REFS.includes(String(ref))) return;
       if (timer !== undefined) clearTimeout(timer);
       timer = setTimeout(async () => {

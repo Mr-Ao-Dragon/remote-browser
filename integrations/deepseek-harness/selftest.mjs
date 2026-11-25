@@ -239,12 +239,15 @@ await acheck("apply 在设置变化后用 fiber.update 重启子进程", async (
     },
   };
   let listener;
+  let subscribedEvent;
   let disposed = false;
   const ctx = {
     plugin: async () => fakeFiber,
     get: (name) => (name === "credentials" ? credentials : undefined),
     on: (event, fn) => {
-      if (event === "credentials/updated") listener = fn;
+      // 只认 dsh 0.2.x 声明的事件名；写错名字时 listener 为空，下面的断言会失败。
+      subscribedEvent = event;
+      if (event === "credentials/reference-updated") listener = fn;
       return () => {
         listener = undefined;
       };
@@ -263,7 +266,8 @@ await acheck("apply 在设置变化后用 fiber.update 重启子进程", async (
   delete process.env.TC_SECRET_ID; // 让凭证库这一层可见
   try {
     await apply(ctx, { serverName: "selftest_watch" });
-    assert.ok(listener, "应注册 credentials/updated 监听");
+    assert.equal(subscribedEvent, "credentials/reference-updated", "应订阅 dsh 0.2.x 的凭证变更事件");
+    assert.ok(listener, "应注册 credentials/reference-updated 监听");
     assert.equal(disposed, true, "监听应挂在 effect 上");
 
     listener("UNRELATED_REF");

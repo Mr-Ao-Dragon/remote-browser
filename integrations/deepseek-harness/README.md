@@ -115,7 +115,7 @@ dsh web --patch ./my-remote-browser.patch.yml
 - **存在哪**：dsh 凭证库（本地 provider 默认写 `$DSH_HOME/.credentials.yaml`），引用名就是环境变量名。密钥不会出现在工具返回值、日志或界面上。
 - **只写不读**：`credentials.describe` 只返回"配没配 / 来源层 / 可不可写"，从不返回值本身。所以输入框永远是空的——留空表示保持现值，点「清除」删掉该层的值、回落到默认值。
 - **优先级**：内置默认值 < 凭证库 < 进程环境 `TC_*`/`RB_*` < 插件 `config.env` < 强制项 `RB_TRANSPORT=STDIO`。某个变量已经在环境里时，该字段会显示「只读」并禁用输入（dsh 凭证提供方拒绝写入被环境变量遮蔽的引用，避免"写成功但读到的还是旧值"）。
-- **什么时候生效**：host 半边监听 `credentials/updated`，去抖 300ms 后用 fiber 的 `update()` 让 MCP 子进程带新环境变量重连，工具名不变。若环境变量层完全覆盖了凭证库，会跳过这次重连。
+- **什么时候生效**：host 半边监听 `credentials/reference-updated`（dsh 0.2.x；rc.1 时代叫 `credentials/updated`），去抖 300ms 后用 fiber 的 `update()` 让 MCP 子进程带新环境变量重连，工具名不变。若环境变量层完全覆盖了凭证库，会跳过这次重连。
 - **谁能写**：dsh 只接受本机同源页面的写入；用非 loopback 地址打开时界面会显示提示，保存会被拒绝。
 
 > 为什么"运行参数"也放在凭证库里：dsh 的 `settings.*` 只服务白名单命名空间（`locale` / `permission` / `ui-conversation` / `ui-theme` / `ui-onboarding` 和模型 provider 的命名空间），第三方插件注册自己的命名空间会被 `settings-not-exposed` 拒绝，且没有通用的键值读写接口。`credentials.describe/set/unset` 是唯一对第三方插件开放的通用写入通道，所以非密钥项也以"引用"的形式落在这里，代价是读不回来，只能看到"已设置/未设置"，默认值写在 placeholder 里。`serverName`、`toolCallTimeoutMs` 这类影响工具注册的配置仍走 `cordis.patch.yml`，改完重启 dsh。
