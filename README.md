@@ -199,6 +199,20 @@ RB_TOOL_ID=sdt-xxx RB_IDLE_WAIT=25000 node scripts/test-lifecycle.mjs
 
 Chromium 不会自动启动，由工具的 `Args` 启动脚本（`src/sandbox/bootstrap.ts` 的 `BROWSER_BOOTSTRAP`）拉起，带崩溃重启循环。9000 端口 nginx 把 `/cdp` 反代到 `127.0.0.1:9222`，9222 不对外暴露。
 
+## 接入 DeepSeek Harness（dsh）
+
+[integrations/deepseek-harness](integrations/deepseek-harness/README.md) 是一个标准 dsh bundle（`dsh.bundle` → `cordis.patch.yml`），内部只做入口定位、`TC_*`/`RB_*` 显式转发，再挂载 dsh 官方的 `@deepseek-ai/dsh-mcp-client`。工具在 dsh 中显示为 `mcp__remote_browser__browser_navigate` 这类名字。
+
+同一个包还带浏览器半边（`dsh.client` → `client.js`）：装好后 dsh 设置弹窗里多出「远端浏览器」标签页，可以直接填 `TC_SECRET_ID` / `TC_SECRET_KEY` 和地域、空闲回收等运行参数。值落在 dsh 凭证库里，保存后 host 半边用 `fiber.update()` 重连 MCP 子进程，不用重启 dsh。
+
+核心代码零改动，MCP 仍是唯一接口：其它 Agent 工具直接接 MCP Server，不需要再写一层适配。
+
+```bash
+npm run build
+node integrations/deepseek-harness/selftest.mjs   # 22 项，离线自检（含 client 产物与重启逻辑）
+node integrations/deepseek-harness/smoke.mjs      # 真实拉起 MCP 子进程，确认 7 个工具被 dsh 发现
+```
+
 ## 已知限制
 
 - `Timeout` 实测最小 300s，空闲回收的最小粒度受限于本地 `RB_IDLE_MS`，与 TTL 无关。
@@ -241,6 +255,8 @@ scripts/
   test-stdio.mjs      stdio 冒烟（7 项，支持懒创建自建自删）
   probes/             历史路线探针（含旧资源 ID，仅供查阅）
 docker/Dockerfile     可选的自定义镜像
+integrations/
+  deepseek-harness/   dsh 适配层：bundle + 设置标签页 + 自检（核心零改动）
 docs/
   implementation-plan.md  实施方案与实测结论
   cost.md                 成本构成与估算方法

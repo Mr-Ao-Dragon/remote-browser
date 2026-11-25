@@ -1,0 +1,17 @@
+# dsh bundle patch：把 remote-browser 的 MCP Server 挂成 dsh 原生工具。
+#
+# 本包只做适配，不含浏览器实现；MCP Server 仍是唯一接口，
+# 其它 Agent 工具（Claude Code / Codex / 自研 harness）直接接 MCP 即可。
+#
+# 用户层 patch 可以按 id 覆盖这里的 config（覆盖是整段替换）：
+#   - id: remote-browser
+#     config:
+#       serverName: my_browser
+#       toolCallTimeoutMs: 300000
+
+- insert:
+    - id: remote-browser
+      name: 'dsh-plugin-remote-browser'
+      config:
+        serverName: remote_browser
+        toolCallTimeoutMs: 240000
