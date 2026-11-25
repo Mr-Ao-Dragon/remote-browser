@@ -145,6 +145,13 @@ check("入口不存在时提示先构建", () => {
   assert.throws(() => buildClientConfig({ entry: "C:/definitely/missing/index.js" }), /npm run build/);
 });
 
+check("显式入口缺失标记为配置错误，不会被降级吞掉", () => {
+  assert.throws(
+    () => resolveEntry({ entry: "C:/definitely/missing/index.js" }),
+    (error) => error.code === "RB_ENTRY_CONFIGURED_MISSING"
+  );
+});
+
 check("相对入口被拒绝", () => {
   assert.throws(() => buildClientConfig({ entry: "./dist/index.js" }), /绝对路径/);
 });
@@ -286,6 +293,54 @@ await acheck("apply 在设置变化后用 fiber.update 重启子进程", async (
   } finally {
     if (original === undefined) delete process.env.TC_SECRET_ID;
     else process.env.TC_SECRET_ID = original;
+  }
+});
+
+await acheck("装进 profile（node_modules 副本）时默认入口失效只降级，不拖垮 dsh", async () => {
+  const { mkdtemp, mkdir, copyFile, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { pathToFileURL } = await import("node:url");
+
+  // 复刻 dsh profile 的目录形态：profiles/<name>/node_modules/<pkg>/index.js
+  const root = await mkdtemp(resolve(tmpdir(), "rb-profile-copy-"));
+  try {
+    const pkgDir = resolve(root, "node_modules", "dsh-plugin-remote-browser");
+    await mkdir(pkgDir, { recursive: true });
+    await copyFile(resolve(HERE, "index.js"), resolve(pkgDir, "index.js"));
+    await copyFile(resolve(HERE, "package.json"), resolve(pkgDir, "package.json"));
+
+    const copied = await import(pathToFileURL(resolve(pkgDir, "index.js")).href);
+
+    let entryError;
+    try {
+      copied.resolveEntry();
+    } catch (error) {
+      entryError = error;
+    }
+    assert.equal(entryError?.code, "RB_ENTRY_DEFAULT_MISSING", "副本内的默认入口应判定为缺失");
+    assert.match(entryError.message, /cordis\.patch\.yml/, "错误信息应提示在 profile 层显式设置 entry");
+
+    const logs = [];
+    let mounted = false;
+    const ctx = {
+      plugin: async () => {
+        mounted = true;
+        return { update: async () => {} };
+      },
+      logger: { info() {}, error: (message) => logs.push(message) },
+    };
+    const original = process.env.RB_MCP_ENTRY;
+    delete process.env.RB_MCP_ENTRY; // 默认路径缺失时才走降级分支
+    try {
+      await copied.apply(ctx);
+    } finally {
+      if (original !== undefined) process.env.RB_MCP_ENTRY = original;
+    }
+    assert.equal(mounted, false, "入口没找到时不应挂载 mcp-client");
+    assert.equal(logs.length, 1, "应记录一条错误日志");
+    assert.match(logs[0], /不挂载 remote-browser/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
 });
 

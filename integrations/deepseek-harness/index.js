@@ -67,19 +67,29 @@ function nonEmptyString(value) {
 
 /**
  * 解析 MCP Server 入口，优先级：config.entry > RB_MCP_ENTRY > 仓库内 dist/index.js。
+ * 默认值只在"源码内直接加载 / overlay"时成立：以 bundle 方式装进 profile 后，
+ * 插件是被 pnpm 复制到 profiles/<name>/node_modules 下的副本，相对路径会算到 profile 根目录，
+ * 所以那种装法必须在 profile 的 patch 层显式写 entry。
  * @param {{ entry?: string }} [config]
  * @returns {string} 入口绝对路径
  */
 export function resolveEntry(config = {}) {
-  const candidate = nonEmptyString(config.entry) || nonEmptyString(process.env.RB_MCP_ENTRY) || REPO_DIST_ENTRY;
+  const configured = nonEmptyString(config.entry) || nonEmptyString(process.env.RB_MCP_ENTRY);
+  const candidate = configured || REPO_DIST_ENTRY;
   if (!isAbsolute(candidate)) {
     throw new Error(`remote-browser(dsh): entry 必须是绝对路径，收到 "${candidate}"`);
   }
   if (!existsSync(candidate)) {
-    throw new Error(
-      `remote-browser(dsh): 找不到 MCP Server 入口 ${candidate}。` +
-        ' 先在仓库根目录执行 "npm run build"，或用 RB_MCP_ENTRY / config.entry 指定入口。'
-    );
+    const message = configured
+      ? `remote-browser(dsh): 找不到 MCP Server 入口 ${candidate}。` +
+        ' 检查 config.entry / RB_MCP_ENTRY 是否指向构建产物（仓库根目录 "npm run build"）。'
+      : `remote-browser(dsh): 找不到 MCP Server 入口 ${candidate}（默认猜测值）。` +
+        ' 先在仓库根目录执行 "npm run build"；如果是用 dsh plugin 装进 profile 的，' +
+        "插件只是 node_modules 下的副本，默认相对路径不成立，需要在 profile 的 cordis.patch.yml 里按 id: remote-browser 显式设置 entry，" +
+        "或用 RB_MCP_ENTRY 指定入口。";
+    const error = new Error(message);
+    error.code = configured ? "RB_ENTRY_CONFIGURED_MISSING" : "RB_ENTRY_DEFAULT_MISSING";
+    throw error;
   }
   return candidate;
 }
@@ -187,17 +197,29 @@ const RESTART_DEBOUNCE_MS = 300;
  * @param {Parameters<typeof buildClientConfig>[0]} [config]
  */
 export async function apply(ctx, config = {}) {
-  const mcpClient = await import("@deepseek-ai/dsh-mcp-client");
   const initialEnv = await readCredentialEnv(ctx);
+  let initialConfig;
+  try {
+    initialConfig = buildClientConfig(config, initialEnv);
+  } catch (error) {
+    // 只有"默认猜测的入口不存在"可以降级：那说明装法需要显式 entry，不该让整个 dsh 进恢复模式。
+    // 用户显式配置了 entry / serverName / 超时却写错，属于配置错误，仍然抛出。
+    if (error?.code !== "RB_ENTRY_DEFAULT_MISSING") throw error;
+    ctx.logger?.error?.(
+      `${error.message} 本次启动不挂载 remote-browser 工具，dsh 其它插件照常加载。`
+    );
+    return;
+  }
+  const mcpClient = await import("@deepseek-ai/dsh-mcp-client");
   // 子插件随本插件卸载，工具一并注销。
-  const fiber = await ctx.plugin(mcpClient, buildClientConfig(config, initialEnv));
+  const fiber = await ctx.plugin(mcpClient, initialConfig);
 
   if (typeof ctx.get !== "function" || typeof ctx.on !== "function" || typeof ctx.effect !== "function") {
     return;
   }
   if (!ctx.get("credentials")) return;
 
-  let appliedEnv = JSON.stringify(collectEnv(config, initialEnv));
+  let appliedEnv = JSON.stringify(initialConfig.env);
   let timer;
   ctx.effect(() => {
     // dsh 0.2.x 的事件名是 credentials/reference-updated（rc.1 时代叫 credentials/updated）。

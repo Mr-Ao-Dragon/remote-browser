@@ -3,11 +3,14 @@
 # 本包只做适配，不含浏览器实现；MCP Server 仍是唯一接口，
 # 其它 Agent 工具（Claude Code / Codex / 自研 harness）直接接 MCP 即可。
 #
-# 用户层 patch 可以按 id 覆盖这里的 config（覆盖是整段替换）：
+# 用户层 patch 可以按 id 覆盖这里的 config（覆盖是整段替换）。
+# 以 bundle 方式装进 profile 时，插件是 profiles/<name>/node_modules 下的副本，
+# 默认入口 ../../dist/index.js 不成立，必须在用户层显式写 entry：
 #   - id: remote-browser
 #     config:
-#       serverName: my_browser
-#       toolCallTimeoutMs: 300000
+#       serverName: remote_browser
+#       toolCallTimeoutMs: 240000
+#       entry: 'C:/absolute/path/to/remote-browser/dist/index.js'
 
 - insert:
     - id: remote-browser

@@ -55,6 +55,18 @@ dsh web
         toolCallTimeoutMs: 240000
 ```
 
+**装进 profile 时必须在 profile 的 `cordis.patch.yml` 里显式指定 `entry`。** pnpm 对本地目录依赖默认是"硬链接复制"而不是软链，装好后插件代码位于 `profiles/<name>/node_modules/dsh-plugin-remote-browser/`，默认入口 `../../dist/index.js` 会被算到 profile 根目录而不是仓库。追加一段覆盖即可（路径换成你的实际绝对路径）：
+
+```yaml
+- id: remote-browser
+  config:
+    serverName: remote_browser
+    toolCallTimeoutMs: 240000
+    entry: 'C:/Users/you/projects/remote-browser/dist/index.js'
+```
+
+漏了这一行时插件不会挂载任何工具，dsh 日志里会有一条明确的「找不到 MCP Server 入口」错误，其它插件不受影响；修好后重启 dsh 即可。
+
 ## 方式 B：不安装，用 overlay 直接加载
 
 先 `cd integrations/deepseek-harness && npm install`，然后写一个 overlay（路径换成你的实际绝对路径）：
@@ -80,7 +92,7 @@ dsh web --patch ./my-remote-browser.patch.yml
 | 字段 | 默认 | 说明 |
 |---|---|---|
 | `serverName` | `remote_browser` | 工具命名空间，`[A-Za-z0-9_-]{1,32}`；改了工具名会变 |
-| `entry` | 仓库 `dist/index.js` | MCP Server 入口绝对路径 |
+| `entry` | 仓库 `dist/index.js` | MCP Server 入口绝对路径；装进 profile（bundle 方式）时必须显式指定 |
 | `command` | `process.execPath` | 启动子进程的可执行文件 |
 | `cwd` | `dist` 的上级目录 | 子进程工作目录 |
 | `env` | `{}` | 追加 / 覆盖环境变量 |
