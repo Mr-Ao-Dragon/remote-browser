@@ -21,7 +21,8 @@ export function registerWaitTool(server: McpServer, manager: SessionManager): vo
     "browser_wait",
     {
       title: "等待条件",
-      description: "等待选择器出现 / 页面出现指定文本 / 地址包含指定片段，任一条件满足即返回。",
+      description:
+        "等待选择器出现 / 页面出现指定文本 / 地址包含指定片段。只传一个条件即可；同时传多个条件时需要全部满足才返回。",
       inputSchema: {
         selector: z.string().optional().describe("等待该选择器出现"),
         text: z.string().optional().describe("等待页面正文包含该文本"),

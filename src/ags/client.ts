@@ -1,19 +1,12 @@
 import fs from "node:fs";
-import { createRequire } from "node:module";
-import type { ags as AgsNamespace } from "tencentcloud-sdk-nodejs-ags";
+// 用静态 import 而非 createRequire：bundle 成单文件时 SDK 才能被内联，
+// 否则运行时按 bundle 所在目录解析 node_modules 会失败。
+import { ags } from "tencentcloud-sdk-nodejs-ags";
+import { AbstractClient } from "tencentcloud-sdk-nodejs-common";
 import { config } from "../config.js";
 import { RbError } from "../errors.js";
 import { log } from "../logger.js";
 import { redact, registerSecret } from "../redact.js";
-
-const require = createRequire(import.meta.url);
-// 腾讯云 SDK 为 CommonJS，用 require 引入以避开 ESM 命名导出探测
-const { ags } = require("tencentcloud-sdk-nodejs-ags") as { ags: typeof AgsNamespace };
-const { AbstractClient } = require("tencentcloud-sdk-nodejs-common") as {
-  AbstractClient: new (endpoint: string, version: string, options: Record<string, unknown>) => {
-    request: (action: string, params: Record<string, unknown>) => Promise<unknown>;
-  };
-};
 
 export interface Credential {
   secretId: string;
@@ -21,7 +14,7 @@ export interface Credential {
   token?: string;
 }
 
-export type AgsClient = InstanceType<(typeof AgsNamespace)["v20250920"]["Client"]>;
+export type AgsClient = InstanceType<(typeof ags)["v20250920"]["Client"]>;
 
 let cachedRole: { credential: Credential; expiresAt: number } | null = null;
 

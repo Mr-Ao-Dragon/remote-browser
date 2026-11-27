@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# 插件分发包里的单文件 bundle 需要随仓库提交，clone 后可直接安装
+!plugins/remote-browser/server/dist/
 *.log
 .env
 .env.*

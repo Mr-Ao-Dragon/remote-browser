@@ -1,0 +1,17 @@
+{
+  "name": "remote-browser",
+  "owner": {
+    "name": "Mr-Ao-Dragon",
+    "url": "https://github.com/Mr-Ao-Dragon"
+  },
+  "description": "remote-browser：随用随关的云端浏览器插件",
+  "version": "1.0.0",
+  "plugins": [
+    {
+      "name": "remote-browser",
+      "source": "./plugins/remote-browser",
+      "description": "在腾讯云 AGS 沙箱里打开、点击、输入、截图和提取网页的 7 个浏览器工具。",
+      "version": "1.0.0"
+    }
+  ]
+}

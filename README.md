@@ -235,6 +235,52 @@ cmd //c mklink /J "%PROGRAMDATA%\Lenovo\AIAgent\xlagent\skills\remote-browser" "
 
 工具名带宿主前缀（如 `mcp__remote_browser__browser_navigate`）时按后缀识别。
 
+## 打包成 Codex / Claude Code 插件
+
+[plugins/remote-browser](plugins/remote-browser) 是一个插件包，同时满足两套格式，装一次即可在两种宿主里用；Skill 与 MCP server 都随包分发，调用方不需要再配启动命令。
+
+| 文件 | 作用 |
+| --- | --- |
+| `plugin.json` | Agent Plugins 1.0 manifest（Codex CLI v0.147.0+ 读取），`$schema` + 名称 + OpenAI 扩展界面信息 |
+| `mcp.json` | Agent Plugins 1.0 MCP 声明，用 `${PLUGIN_ROOT}` 定位 bundle |
+| `.claude-plugin/plugin.json` | Claude Code manifest，声明 `tc_secret_id` / `tc_secret_key` 两个 `userConfig` |
+| `.mcp.json` | Claude Code MCP 声明，用 `${CLAUDE_PLUGIN_ROOT}` 与 `${user_config.*}` |
+| `skills/remote-browser/` | 与仓库 `skills/` 同一份内容的副本，由构建脚本同步 |
+| `server/dist/remote-browser.cjs` | esbuild 单文件 bundle，含 SDK、Playwright 等全部运行时依赖 |
+
+仓库根的两个 marketplace 文件分别指向它：`.claude-plugin/marketplace.json`（Claude Code）和 `.agents/plugins/marketplace.json`（Codex）。
+
+改完源码后重新出包并校验：
+
+```bash
+npm run plugin:build   # tsc + esbuild + 同步 Skill + 生成 server/package.json
+npm run plugin:check   # manifest 结构、占位符、Skill 一致性、真实 MCP 握手（7 个工具）
+```
+
+安装（Claude Code）：
+
+```bash
+claude plugin marketplace add <本仓库路径或 owner/repo>
+claude plugin install remote-browser@remote-browser
+```
+
+安装过程中会提示填 `tc_secret_id` 与 `tc_secret_key`，`tc_secret_key` 标记为敏感字段，落在系统凭证库里而不是 `settings.json`。
+
+安装（Codex）：
+
+```bash
+codex plugin marketplace add <本仓库路径>
+```
+
+之后在 Plugins Directory 里安装 `remote-browser`。也可以用仓库级配置显式启用，写进 `.codex/config.toml`：
+
+```toml
+[plugins."remote-browser@remote-browser"]
+enabled = true
+```
+
+插件里的 MCP 进程只认环境变量：`TC_SECRET_ID` / `TC_SECRET_KEY`（或 `TC_CRED_FILE`）以及 `RB_*`。宿主没把凭证传进来时会以 `credential_missing` 失败，此时在宿主的 MCP 环境变量里补上即可，其余章节的配置项全部适用。
+
 ## 已知限制
 
 - `Timeout` 实测最小 300s，空闲回收的最小粒度受限于本地 `RB_IDLE_MS`，与 TTL 无关。
@@ -275,10 +321,18 @@ scripts/
   acceptance.mjs      HTTP 验收（11 项）
   test-lifecycle.mjs  生命周期验收（5 项）
   test-stdio.mjs      stdio 冒烟（7 项，支持懒创建自建自删）
+  build-plugin.mjs    构建 Codex / Claude Code 插件包（tsc + bundle + 同步 Skill）
+  verify-plugin.mjs   校验插件包：manifest、占位符、Skill 一致性与 MCP 握手
   probes/             历史路线探针（含旧资源 ID，仅供查阅）
 docker/Dockerfile     可选的自定义镜像
 integrations/
   deepseek-harness/   dsh 适配层：bundle + 设置标签页 + 自检（核心零改动）
+plugins/
+  remote-browser/     同时兼容 Codex(Agent Plugins 1.0) 与 Claude Code 的插件包
+.claude-plugin/
+  marketplace.json    Claude Code marketplace 入口
+.agents/plugins/
+  marketplace.json    Codex marketplace 入口
 skills/
   remote-browser/     Agent Skill：7 个工具的使用说明、错误应对与任务配方
 docs/

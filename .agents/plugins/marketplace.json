@@ -1,0 +1,20 @@
+{
+  "name": "remote-browser",
+  "interface": {
+    "displayName": "Remote Browser"
+  },
+  "plugins": [
+    {
+      "name": "remote-browser",
+      "source": {
+        "source": "local",
+        "path": "./plugins/remote-browser"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

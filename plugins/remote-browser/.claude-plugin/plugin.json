@@ -1,0 +1,33 @@
+{
+  "name": "remote-browser",
+  "displayName": "Remote Browser",
+  "version": "1.0.0",
+  "description": "在腾讯云 AGS 沙箱里打开、点击、输入、截图和提取网页的 7 个浏览器工具，随用随开、空闲自动回收。",
+  "author": {
+    "name": "Mr-Ao-Dragon",
+    "url": "https://github.com/Mr-Ao-Dragon"
+  },
+  "homepage": "https://github.com/Mr-Ao-Dragon/remote-browser",
+  "repository": "https://github.com/Mr-Ao-Dragon/remote-browser",
+  "license": "ISC",
+  "keywords": [
+    "browser",
+    "playwright",
+    "mcp",
+    "sandbox",
+    "web-automation"
+  ],
+  "userConfig": {
+    "tc_secret_id": {
+      "type": "string",
+      "title": "腾讯云 SecretId",
+      "description": "用于创建和停止沙箱实例的控制面凭证。留空则回落到 TC_CRED_FILE 指向的 CSV。"
+    },
+    "tc_secret_key": {
+      "type": "string",
+      "title": "腾讯云 SecretKey",
+      "description": "与 SecretId 配套。敏感值，保存在系统凭证库中。",
+      "sensitive": true
+    }
+  }
+}

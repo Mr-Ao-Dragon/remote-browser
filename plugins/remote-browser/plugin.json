@@ -1,0 +1,37 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "remote-browser",
+  "version": "1.0.0",
+  "description": "在腾讯云 AGS 沙箱里打开、点击、输入、截图和提取网页的 7 个浏览器工具，随用随开、空闲自动回收。",
+  "author": {
+    "name": "Mr-Ao-Dragon",
+    "url": "https://github.com/Mr-Ao-Dragon"
+  },
+  "homepage": "https://github.com/Mr-Ao-Dragon/remote-browser",
+  "repository": "https://github.com/Mr-Ao-Dragon/remote-browser",
+  "license": "ISC",
+  "keywords": [
+    "browser",
+    "playwright",
+    "mcp",
+    "sandbox",
+    "tencent-cloud",
+    "web-automation"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Remote Browser",
+        "shortDescription": "随用随关的云端浏览器：打开网页、抓数据、填表、截图。",
+        "longDescription": "通过 MCP 把 7 个浏览器工具交给 Agent，底层跑在腾讯云 Agent Runtime 沙箱里。首次调用才创建实例，空闲自动暂停，任务结束即释放，Agent 看不到实例与 Token。",
+        "developerName": "Mr-Ao-Dragon",
+        "category": "Productivity",
+        "capabilities": [
+          "Read",
+          "Write"
+        ],
+        "websiteURL": "https://github.com/Mr-Ao-Dragon/remote-browser"
+      }
+    }
+  }
+}
